@@ -1,0 +1,16 @@
+#include <linux/tcp.h>
+
+kprobe:prague_cong_control {
+    $sk = (struct sock*)arg0;
+    $tp = (struct tcp_sock*)$sk;
+
+    $srtt_us = $tp->srtt_pace_us >> $tp->g_srtt_shift;
+    $mdev_us = $tp->mdev_pace_us >> $tp->g_mdev_shift;
+    $min_rtt_us = $tp->rtt_min.s[0].v;
+
+    @sdepth_us = hist($srtt_us - $min_rtt_us);
+    @mdev_us = hist($mdev_us);
+
+    @srtt_shift = lhist($tp->g_srtt_shift, 0, 64, 1);
+    @mdev_shift = lhist($tp->g_mdev_shift, 0, 64, 1);
+}

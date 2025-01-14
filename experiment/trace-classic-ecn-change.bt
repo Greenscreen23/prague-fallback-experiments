@@ -1,0 +1,77 @@
+#include <linux/tcp.h>
+
+// Constants from https://github.com/L4STeam/linux/blob/15b3b6c85e5f996618a6fb8a9b50a8f9e1886a06/net/ipv4/tcp_prague.c
+#define PRAGUE_ALPHA_BITS	(uint32)24
+
+#define PRAGUE_MAX_SRTT_BITS	(uint32)18
+#define PRAGUE_MAX_MDEV_BITS	(PRAGUE_MAX_SRTT_BITS+1)
+#define PRAGUE_INIT_ADJ_US	262144 /* 1 << (PRAGUE_MAX_MDEV_BITS-1) */
+
+/* Weights, 1/2^x */
+#define V 1	/* 0.5 */
+#define D 1	/* 0.5 */
+
+#define V0_LG	((uint64)10014683 >> V)	/* reference queue V of ~750us */
+#define D0_LG	((uint64)11498458 >> D)	/* reference queue D of ~2ms */
+
+// When the kernel patch is applied, use these instead of the values above
+// #define V0_LG	((uint64)160234941 >> V)	/* reference queue V of ~750us */
+// #define D0_LG	((uint64)183975331 >> D)	/* reference queue D of ~2ms */
+
+kprobe:prague_cong_control {
+    $sk = (struct sock*)arg0;
+	$csk = (struct inet_connection_sock*)$sk;
+    $rest_depth_us = $csk->icsk_ca_priv[11] & 0xffffffff;
+    $rest_mdev_us = ($csk->icsk_ca_priv[11] >> 32) & 0xffffffff;
+
+    $tp = (struct tcp_sock*)$sk;
+
+    $classic_ecn = $tp->classic_ecn;
+
+	@classic_ecn = hist($classic_ecn);
+
+	$min_rtt_us = $tp->rtt_min.s[0].v;
+	$g_srtt_shift = $tp->g_srtt_shift;
+	$g_mdev_shift = $tp->g_mdev_shift;
+	$srtt_us = $tp->srtt_pace_us >> $g_srtt_shift;
+	$mdev_us = $tp->mdev_pace_us >> $g_mdev_shift;
+	$adj_us = (uint64)(PRAGUE_INIT_ADJ_US >> (PRAGUE_MAX_MDEV_BITS - $g_mdev_shift));
+
+	$mdev_us = (uint64)$mdev_us * $rest_mdev_us + $adj_us;
+
+	$mdev_us >>= $g_mdev_shift;
+	$mdev_lg = (uint64)0;
+	while($mdev_lg < 64) {
+		if ($mdev_us <= 1) {
+			break;
+		}
+		$mdev_us >>= 1;
+		$mdev_lg++;
+	}
+
+	$mdev_lg <<= PRAGUE_ALPHA_BITS - V;
+	$mdev_change = $mdev_lg - V0_LG;
+
+	@mdev_change = hist($mdev_change);
+
+	$depth_us = $srtt_us - $min_rtt_us;
+	$depth_us = $depth_us * $rest_depth_us + ($adj_us >> 1);
+	$depth_us >>= $g_srtt_shift;
+	$depth_lg = (uint64)0;
+	while($depth_lg < 64) {
+		if ($depth_us <= 1) {
+			break;
+		}
+		$depth_us >>= 1;
+		$depth_lg++;
+	}
+
+	$depth_lg <<= PRAGUE_ALPHA_BITS - D;
+	if ($depth_lg > D0_LG) {
+		$depth_lg -= D0_LG;
+	} else {
+		$depth_lg = 0;
+	}
+
+	@depth_change = hist($depth_lg);
+}

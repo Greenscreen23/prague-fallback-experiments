@@ -1,0 +1,26 @@
+#include <linux/tcp.h>
+
+struct ack_sample {
+	uint32_t pkts_acked;
+	int32_t rtt_us;
+	uint32_t in_flight;
+};
+
+// basically prague_rtt_estimator
+kprobe:prague_pkts_acked {
+    $sk = (struct sock*)arg0;
+    $tp = (struct tcp_sock*)$sk;
+    $sample = (struct ack_sample*)arg1;
+    $mrtt_us = (int64)$sample->rtt_us;
+    if ($mrtt_us != -1) {
+        @depth_us = hist($mrtt_us - 10000);
+
+        if ($tp->srtt_pace_us != 0) {
+            $mrtt_us -= (int64)((uint64)$tp->srtt_pace_us >> $tp->g_srtt_shift);
+            if ($mrtt_us < 0) {
+                $mrtt_us = -$mrtt_us;
+            }
+            @mdev_us = hist($mrtt_us);
+        }
+    }
+}
