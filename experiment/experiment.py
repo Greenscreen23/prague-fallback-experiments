@@ -34,7 +34,14 @@ for i in range(args.iterations):
     if not args.skip_experiment:
         if args.trace_prague:
             traces = [
-                Popen(["bpftrace", file, "-o", f"{args.folder}/{file}-{i}.out"])
+                Popen(
+                    [
+                        "bpftrace",
+                        file,
+                        "-o",
+                        f"{args.folder}/{os.path.basename(file)}-{i}.out",
+                    ]
+                )
                 for file in args.trace_prague
             ]
 
