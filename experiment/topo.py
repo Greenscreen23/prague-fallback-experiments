@@ -155,7 +155,7 @@ class DelayHost(ExperimentHost):
         self.cmd("modprobe sch_netem")
         for intf in self.intfNames():
             self.cmd(
-                f"tc qdisc add dev {intf} root netem delay {self.delay // 2}ms limit 60000"
+                f"tc qdisc add dev {intf} root netem delay {self.delay / 2}ms limit 60000"
             )
 
 
