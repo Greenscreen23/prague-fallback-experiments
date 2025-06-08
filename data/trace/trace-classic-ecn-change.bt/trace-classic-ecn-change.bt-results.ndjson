@@ -1,0 +1,8 @@
+{"type": "attached_probes", "data": {"probes": 1}}
+{"type": "map", "data": {"@depth_change_pos": 2326}}
+{"type": "map", "data": {"@depth_change_pos_sum": 104982163618}}
+{"type": "map", "data": {"@depth_change_zero": 0}}
+{"type": "map", "data": {"@mdev_change_neg": 2}}
+{"type": "map", "data": {"@mdev_change_neg_sum": 10014682}}
+{"type": "map", "data": {"@mdev_change_pos": 2324}}
+{"type": "map", "data": {"@mdev_change_pos_sum": 92448787580}}

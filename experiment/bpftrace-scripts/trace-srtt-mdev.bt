@@ -1,0 +1,37 @@
+#include <linux/tcp.h>
+
+/**
+`prague_classic_ecn_detection` is usually inlined and thereby not traceable.
+Use `noinline.diff` and build the kernel yourself to be able to
+run this script.
+
+Alternatively, you can use `prague_cong_control` instead of
+`prague_classic_ecn_detection` with the default prague kernel.
+The results will not be totally correct (but similar enough),
+since `prague_classic_ecn_detection` might not be called in `prague_cong_control`.
+    */
+kprobe:prague_classic_ecn_detection {
+    $sk = (struct sock*)arg0;
+    $tp = (struct tcp_sock*)$sk;
+
+    $srtt_us = $tp->srtt_pace_us >> $tp->g_srtt_shift;
+    $mdev_us = $tp->mdev_pace_us >> $tp->g_mdev_shift;
+    $min_rtt_us = $tp->rtt_min.s[0].v;
+    $sdepth_us = $srtt_us - $min_rtt_us;
+
+    if ($sdepth_us >= 2000) {
+        @sdepth_ge = count();
+        @sdepth_ge_sum = sum($sdepth_us);
+    } else {
+        @sdepth_l = count();
+        @sdepth_l_sum = sum($sdepth_us);
+    }
+
+    if ($mdev_us >= 750) {
+        @mdev_ge = count();
+        @mdev_ge_sum = sum($mdev_us);
+    } else {
+        @mdev_l = count();
+        @mdev_l_sum = sum($mdev_us);
+    }
+}

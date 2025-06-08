@@ -1,25 +1,26 @@
-# Prague Fallback Experiments
+# Reproducing and Solving a Fallback Issue in TCP Prague
 
-TCP Prague is the candidate for scalable congestion control on the internet. A fallback to classic behavior was implemented to make sure that this new congestion control does not starve classic flows when competing on a classic ECN-capable AQM.
+This repo contains the experiment code, plotting code and experiment data of the paper Reproducing and Solving a Fallback Issue in TCP Prague. 
 
-A recent experiment [1] has shown that the current implementation of this fallback falsely detects a new AQM as classic. This repo contains the experiment code I used to debug the issue. I have reproduced the results of [1] in Fig 1.
+## Reproducing the Experiments
 
-The fallback implementation contains two constant values, which are used as a reference for queuing delay and RTT variation (`V0_LG` and `D0_LG`). These values are upscaled by a factor `PRAGUE_MAX_ALPHA`, which was $2^{20}$ initially [2], but has changed afterwards. The values have not been adapted, which makes Prague fall back to classic behavior even on a scalable AQM.
+You can reproduce the experiments by running the [prague Linux kernel](https://github.com/L4STeam/linux/tree/15b3b6c85e5f996618a6fb8a9b50a8f9e1886a06). To run a single instance launch the `run.py` file in the experiment folder. All command line flags are documented in `args.py` and the topology is documented in `topo.py`.
 
-To fix the issue, simply apply the patch `linux.diff` to the [L4S repo](https://github.com/L4STeam/linux/tree/testing), and recompile the kernel. Fig 2 displays the results of the experiment with the patch. Prague is now behaving as intended and not falling back to classic behavior.
+To reproduce a specific experimental setup, use the scripts in the `start-scripts` subfolder:
+- For chapter 3 use `reproduce.sh`.
+- For chapter 4 use `extend.sh`.
+- For chapter 5 first either apply `bpftrace-scripts/noinline.diff` to the linux kernel, compile it, and run it, or follow the instructions in the three bpftrace files in the `bpftrace-scripts` folder to change the function being traced. Then use `trace.sh`.
+- For chapter 6 first run the [updated prague Linux kernel](https://github.com/L4STeam/linux/tree/48b3db6b4a7fd57e2d31db3bb46a3bc6af7bf3ad) and then run `extend.sh` (and `extend-traced.sh` for the additional run with bpftrace).
 
-## Images
+## Using Our Experiment Data
 
-![Heatmap without the patch](res/heatmap-unpatched.svg)
+You can retrieve our raw experiment data from the Github release of this repo. The `data` folder contains a compressed version of our data. To use our plotting notebooks, you don't need to download the raw experiment data. Our raw data was compressed by running the `convert.sh` script.
 
-Fig 1: Throughput of TCP Prague in Mbps competing with Cubic on a 100Mbps link.
+## Plotting
 
-![Heatmap with the patch](res/heatmap-patched.svg)
+All plots in the paper were created using the notebooks in the `plotting` folder.
+- For Figure 1 we used `explain.ipynb`
+- For Figure 3 we used `reproduce.ipynb`
+- For Figure 4 and 5 we used `extend.ipynb`
 
-Fig 2: Throughput of TCP Prague with the patch applied.
-
-## Sources
-
-[1] Sarpkaya, Fatih Berkay, et al. "To switch or not to switch to TCP Prague? Incentives for adoption in a partial L4S deployment." Proceedings of the 2024 Applied Networking Research Workshop. 2024.
-
-[2] Briscoe, Bob, and Asad Sajjad Ahmed. "TCP Prague Fall-back on Detection of a Classic ECN AQM." arXiv preprint arXiv:1911.00710 (2019).
+All plots created are in the `images` subfolder. You can also find additional plots in that folder which were discussed in the paper. For example `plotting/images/extend/patched/classic_ecn.pdf` visualizes the bpftrace output of the additional experiment run described in chapter 6.

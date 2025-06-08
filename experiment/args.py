@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+AQMS = ["DualPI2", "FIFO", "FIFO (ECN)", "CoDel", "FQ", "FQ-CoDel"]
+
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument(
     "-f", "--folder", help="Destination folder for output files", default="."
@@ -11,9 +13,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "-n",
-    "--n-ddp",
+    "--n-bdp",
     default=2,
-    help="The buffer size multiplyer. The final buffer size will be n-ddp times the data rate delay product.",
+    help="The buffer size multiplyer. The final buffer size will be n-bdp times the bandwidth delay product.",
     type=float,
 )
 parser.add_argument(
@@ -23,64 +25,53 @@ parser.add_argument(
     help="Whether ECN fallback should be on (1) or off (0)",
 )
 parser.add_argument(
-    "-i", "--iterations", default=1, help="The number of iterations to run", type=int
-)
-parser.add_argument(
     "-t", "--duration", default=60, help="The duration of each test in s", type=int
 )
 parser.add_argument(
     "-c",
-    "--cli",
-    default=False,
-    action="store_true",
-    help="Run a CLI before the experiment",
+    "--classic-cca",
+    default='cubic',
+    choices=['cubic', 'bbr2'],
+    help="The classic CCA to compete against prague",
 )
 parser.add_argument(
     "-s",
     "--skip-experiment",
     default=False,
     action="store_true",
-    help="Skip the experiment (useful in combination with --cli)",
+    help="Run a CLI and then skip the experiment (useful to validate the current setup)",
 )
 parser.add_argument(
     "-a",
     "--aqm",
     default="DualPI2",
-    choices=["DualPI2", "FIFO", "FIFO (ECN)", "CoDel", "FQ", "FQ-CoDel"],
+    choices=AQMS,
     help="The AQM to use",
 )
 parser.add_argument(
-    "-g",
-    "--trace-prague",
+    "-T",
+    "--trace",
     nargs="+",
     help="Launch the given file with bpftrace",
 )
 parser.add_argument(
-    "-p",
-    "--create-pcap",
+    "-D",
+    "--dropped-packets",
     default=False,
     action="store_true",
-    help="Create a pcap file with the entire traffic.",
+    help="Create a router-rx-stats.json file with the number of dropped packets",
 )
 parser.add_argument(
-    "-C",
-    "--disable-cubic",
-    default=False,
-    action="store_true",
-    help="Disable the cubic flow",
+    "-O",
+    "--omit",
+    default=0,
+    type=int,
+    help="The number of seconds to do a pretest, to skip past TCP slow start",
 )
 parser.add_argument(
-    "-N",
-    "--disable-nagle",
+    "--tcpdump",
     default=False,
-    action="store_true",
-    help="Disable the nagles algorithm flow",
-)
-parser.add_argument(
-    "-q",
-    "--quickack",
-    default=False,
-    action="store_true",
-    help="Enable quickack on all interfaces",
+    action='store_true',
+    help="Store all packets with tcpdump"
 )
 args = parser.parse_args()

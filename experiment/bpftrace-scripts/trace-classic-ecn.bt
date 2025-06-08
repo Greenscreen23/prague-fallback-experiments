@@ -1,0 +1,36 @@
+#include <linux/tcp.h>
+
+// Constants from https://github.com/L4STeam/linux/blob/15b3b6c85e5f996618a6fb8a9b50a8f9e1886a06/net/ipv4/tcp_prague.c
+#define PRAGUE_ALPHA_BITS	(uint32)24
+#define PRAGUE_MAX_ALPHA	((uint64)1 << PRAGUE_ALPHA_BITS)
+#define V 1	/* 0.5 */
+
+#define L_STICKY	((uint64)16 << (PRAGUE_ALPHA_BITS-V))	/* Pure L4S behaviour */
+#define CLASSIC_ECN L_STICKY + PRAGUE_MAX_ALPHA		    /* Transition between classic and L4S */
+#define C_STICKY	CLASSIC_ECN + L_STICKY			    /* Pure classic behaviour */
+
+/**
+`prague_classic_ecn_fallback` is usually inlined and thereby not traceable.
+Use `noinline.diff` and build the kernel yourself to be able to
+run this script.
+
+Alternatively, you can use `prague_state` instead of
+`prague_classic_ecn_fallback` with the default prague kernel.
+The results will not be totally correct (but similar enough),
+since `prague_classic_ecn_fallback` might not be called in
+`prague_state`.
+    */
+kprobe:prague_classic_ecn_fallback {
+    $sk = (struct sock*)arg0;
+    $tp = (struct tcp_sock*)$sk;
+
+    $classic_ecn = $tp->classic_ecn;
+
+    if ($classic_ecn <= L_STICKY) {
+        @scalable = count();
+    } else if ($classic_ecn >= CLASSIC_ECN) {
+        @classic = count();
+    } else {
+        @transition = count();
+    }
+}

@@ -1,0 +1,8 @@
+{"type": "attached_probes", "data": {"probes": 1}}
+{"type": "map", "data": {"@mdev_ge": 0}}
+{"type": "map", "data": {"@mdev_l": 2324}}
+{"type": "map", "data": {"@mdev_l_sum": 99132}}
+{"type": "map", "data": {"@sdepth_ge": 3}}
+{"type": "map", "data": {"@sdepth_ge_sum": 7308}}
+{"type": "map", "data": {"@sdepth_l": 2321}}
+{"type": "map", "data": {"@sdepth_l_sum": 122036}}

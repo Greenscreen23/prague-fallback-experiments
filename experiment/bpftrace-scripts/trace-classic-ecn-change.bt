@@ -18,17 +18,25 @@
 // #define V0_LG	((uint64)160234941 >> V)	/* reference queue V of ~750us */
 // #define D0_LG	((uint64)183975331 >> D)	/* reference queue D of ~2ms */
 
-kprobe:prague_cong_control {
-    $sk = (struct sock*)arg0;
-	$csk = (struct inet_connection_sock*)$sk;
-    $rest_depth_us = $csk->icsk_ca_priv[11] & 0xffffffff;
-    $rest_mdev_us = ($csk->icsk_ca_priv[11] >> 32) & 0xffffffff;
+/**
+`prague_classic_ecn_detection` is usually inlined and thereby not traceable.
+Use `noinline.diff` and build the kernel yourself to be able to
+run this script.
 
-    $tp = (struct tcp_sock*)$sk;
+Alternatively, you can use `prague_cong_control` instead of
+`prague_classic_ecn_detection` with the default prague kernel.
+The results will not be totally correct (but similar enough),
+since `prague_classic_ecn_detection` might not be called in `prague_cong_control`.
+    */
+kprobe:prague_classic_ecn_detection {
+	$sk = (struct sock*)arg0;
+	$tp = (struct tcp_sock*)$sk;
+	$csk = (struct inet_connection_sock*)$sk;
+	$ca = $csk->icsk_ca_priv;
+    $rest_depth_us = (uint32)($ca[11] & 4294967295);
+	$rest_mdev_us = (uint32)(($ca[11] >> 32) & 4294967295);
 
     $classic_ecn = $tp->classic_ecn;
-
-	@classic_ecn = hist($classic_ecn);
 
 	$min_rtt_us = $tp->rtt_min.s[0].v;
 	$g_srtt_shift = $tp->g_srtt_shift;
@@ -50,9 +58,15 @@ kprobe:prague_cong_control {
 	}
 
 	$mdev_lg <<= PRAGUE_ALPHA_BITS - V;
-	$mdev_change = $mdev_lg - V0_LG;
+	$mdev_change = (int64)$mdev_lg - (int64)V0_LG;
 
-	@mdev_change = hist($mdev_change);
+	if ($mdev_change >= 0) {
+		@mdev_change_pos = count();
+		@mdev_change_pos_sum = sum($mdev_change);
+	} else {
+		@mdev_change_neg = count();
+		@mdev_change_neg_sum = sum(-$mdev_change);
+	}
 
 	$depth_us = $srtt_us - $min_rtt_us;
 	$depth_us = $depth_us * $rest_depth_us + ($adj_us >> 1);
@@ -68,10 +82,10 @@ kprobe:prague_cong_control {
 
 	$depth_lg <<= PRAGUE_ALPHA_BITS - D;
 	if ($depth_lg > D0_LG) {
-		$depth_lg -= D0_LG;
+		$depth_change = (int64)$depth_lg - (int64)D0_LG;
+		@depth_change_pos = count();
+		@depth_change_pos_sum = sum($depth_change);
 	} else {
-		$depth_lg = 0;
+		@depth_change_zero = count();
 	}
-
-	@depth_change = hist($depth_lg);
 }
