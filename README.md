@@ -10,7 +10,7 @@ To reproduce a specific experimental setup, use the scripts in the `start-script
 - For chapter 3 use `reproduce.sh`.
 - For chapter 4 use `extend.sh`.
 - For chapter 5 first either apply `bpftrace-scripts/noinline.diff` to the linux kernel, compile it, and run it, or follow the instructions in the three bpftrace files in the `bpftrace-scripts` folder to change the function being traced. Then use `trace.sh`.
-- For chapter 6 first run the [updated prague Linux kernel](https://github.com/L4STeam/linux/tree/48b3db6b4a7fd57e2d31db3bb46a3bc6af7bf3ad) and then run `extend.sh` (and `extend-traced.sh` for the additional run with bpftrace).
+- For chapter 6 first run the [updated prague Linux kernel](https://github.com/L4STeam/linux/tree/48b3db6b4a7fd57e2d31db3bb46a3bc6af7bf3ad) and then run `extend.sh`. To run the additional traced run follow the setup instructions for chapter 5 and then run `extend-traced.sh`.
 
 ## Using Our Experiment Data
 
